@@ -1,71 +1,65 @@
-import requests
-from bs4 import BeautifulSoup
+# Импорт библиотеки для построения графиков
 import matplotlib.pyplot as plt
-import pandas as pd
 
-def get_population_data(countries):
-    """Получает данные о населении стран с Worldometer"""
-    # В реальном проекте нужно парсить сайт worldometers.info
-    # Здесь создадим демонстрационные данные
-    
-    # Примерные данные для демонстрации
-    years = [2000, 2010, 2020]
-    population_data = {}
-    
-    # Примерные данные населения (в миллионах)
-    demo_data = {
-        'Китай': [1260, 1340, 1400],
-        'Индия': [1050, 1230, 1380],
-        'США': [282, 309, 331],
-        'Россия': [146, 142, 144],
-        'Бразилия': [174, 196, 213]
-    }
-    
-    # Если запрошенные страны есть в демо-данных
-    available_data = {}
-    for country in countries:
-        if country in demo_data:
-            available_data[country] = demo_data[country]
-    
-    return years, available_data
+# Список выбранных стран для анализа
+countries = ['Китай', 'Индия', 'США', 'Россия', 'Япония']
 
-def plot_population_charts(countries):
-    """Строит столбчатые диаграммы населения стран"""
-    years, population_data = get_population_data(countries)
-    
-    if not population_data:
-        print("Данные для запрошенных стран не найдены")
-        return
-    
-    # Создаем DataFrame для удобства
-    df = pd.DataFrame(population_data, index=years)
-    
-    # Строим отдельные графики для каждого года
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    
-    for i, year in enumerate(years):
-        ax = axes[i]
-        data = df.loc[year]
-        
-        bars = ax.bar(range(len(data)), data.values())
-        ax.set_title(f'Население в {year} году')
-        ax.set_xlabel('Страны')
-        ax.set_ylabel('Население (млн)')
-        ax.set_xticks(range(len(data)))
-        ax.set_xticklabels(data.index, rotation=45)
-        
-        # Добавляем значения на столбцы
-        for bar, value in zip(bars, data.values()):
-            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5,
-                   f'{value:.1f}', ha='center', va='bottom')
-    
-    plt.tight_layout()
-    plt.show()
-    
-    # Также выводим таблицу с данными
-    print("Данные о населении (млн человек):")
-    print(df)
+# Данные о населении в 2000 году (в миллионах человек)
+pop_2000 = [1264, 1057, 282, 146, 127]
 
-# Пример использования
-selected_countries = ['Китай', 'Индия', 'США', 'Россия', 'Бразилия']
-plot_population_charts(selected_countries)
+# Данные о населении в 2010 году (в миллионах человек)
+pop_2010 = [1340, 1231, 309, 143, 128]
+
+# Данные о населении в 2020 году (в миллионах человек)
+pop_2020 = [1412, 1380, 331, 146, 126]
+
+# Создание фигуры с тремя горизонтальными подграфиками размером 16x6 дюймов
+fig, axes = plt.subplots(1, 3, figsize=(16, 6))
+
+# Цветовая палитра для столбцов каждого года
+colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']
+
+# Метки годов для заголовков графиков
+years = ['2000', '2010', '2020']
+
+# Список с данными о населении за все три года
+population_data = [pop_2000, pop_2010, pop_2020]
+
+# Цикл по всем трем графикам для их построения
+for i, (ax, year, data, color) in enumerate(zip(axes, years, population_data, colors)):
+    # Создание столбчатой диаграммы с настройками внешнего вида
+    bars = ax.bar(countries, data, color=color, alpha=0.8, edgecolor='black', linewidth=0.5)
+    # Установка заголовка для каждого графика
+    ax.set_title(f'{year} год', fontsize=14, fontweight='bold', pad=20)
+    # Подпись оси Y (количество населения)
+    ax.set_ylabel('Население (млн человек)', fontsize=10)
+    # Настройка меток оси X (поворот на 45 градусов)
+    ax.tick_params(axis='x', rotation=45, labelsize=9)
+    # Настройка меток оси Y (размер шрифта)
+    ax.tick_params(axis='y', labelsize=9)
+    # Добавление сетки на график (только горизонтальные линии)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    
+    # Цикл для добавления числовых значений поверх каждого столбца
+    for bar in bars:
+        height = bar.get_height()  # Получение высоты столбца
+        # Размещение текста с числовым значением над столбцом
+        ax.text(bar.get_x() + bar.get_width()/2., height + 5,
+                f'{height:.0f}', ha='center', va='bottom', fontsize=8)
+
+# Главный заголовок для всей фигуры (над всеми графиками)
+plt.suptitle('Динамика населения стран мира (2000-2020 гг.)', 
+             fontsize=16, fontweight='bold', y=0.98)
+
+# Автоматическая настройка отступов между элементами графика
+plt.tight_layout()
+
+# Ручная корректировка отступов (верхний отступ и расстояние между графиками)
+plt.subplots_adjust(top=0.85, wspace=0.3)
+
+# Цикл для установки фонового цвета всех графиков
+for ax in axes:
+    ax.set_facecolor('#f8f9fa')  # Светло-серый фон для графиков
+
+# Отображение готовой фигуры с тремя диаграммами
+plt.show()
