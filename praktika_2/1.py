@@ -27,9 +27,9 @@ def check_shooting_hypothesis(n_shots, n_misses, p_null=0.1, p_alt=0.13, alpha=0
     # ПРОВЕРКА ГИПОТЕЗЫ
     hypothesis_accepted = lower_bound <= n_misses <= upper_bound # Проверяем, попадает ли фактическое число промахов в доверительный интервал
     
-    # РАСЧЕТ МОЩНОСТИ ТЕСТА
-    power_calculated = (normal_cdf(upper_bound, mu_alt, sigma_alt) - 
-                       normal_cdf(lower_bound, mu_alt, sigma_alt)) # Вероятность правильно отвергнуть ложную гипотезу
+    # РАСЧЕТ МОЩНОСТИ ТЕСТА (взято из первой программы)
+    beta = normal_cdf(upper_bound, mu_alt, sigma_alt) - normal_cdf(lower_bound, mu_alt, sigma_alt)
+    power_calculated = 1 - beta
     
     # РАСЧЕТ P-ЗНАЧЕНИЯ
     # Вероятность получить такие или более крайние результаты при верной нулевой гипотезе

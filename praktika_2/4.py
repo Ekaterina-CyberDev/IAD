@@ -1,72 +1,68 @@
 import math
+import matplotlib.pyplot as plt  # Импорт библиотеки для построения графиков
+from typing import List, Tuple  # Импорт типов для аннотаций
 
-# Функция вычисления нормального распределения
-def f_norm(x, mu=0, sigma=1):
-    z = (x - mu) / sigma  # Стандартизация значения
-    if z < -8: return 0  # Левая граница распределения
-    if z > 8: return 1   # Правая граница распределения
-    s = 0  # Инициализация суммы ряда
-    t = z  # Первый член ряда
-    for i in range(1, 50):  # Разложение в ряд Тейлора
-        s += t  # Добавление члена ряда к сумме
-        t *= -z*z/(2*i+1)  # Вычисление следующего члена ряда
-    return 0.5 + s/math.sqrt(2*math.pi)  # Нормальное распределение
+def normal_cdf(x: float, mean: float = 0, std: float = 1) -> float:
+    """Функция нормального распределения"""
+    z = (x - mean) / (std * math.sqrt(2)) if std != 0 else 0  # Вычисление стандартизированного значения
+    return 0.5 * (1 + math.erf(z))  # Возврат значения функции нормального распределения
 
-# Функция обратного нормального распределения
-def inv_f_norm(p, mu=0, sigma=1):
-    if p <= 0: return -8*sigma + mu  # Минимальное значение
-    if p >= 1: return 8*sigma + mu   # Максимальное значение
-    
-    low, high = -8, 8  # Границы поиска
-    for _ in range(50):  # Бинарный поиск
-        mid = (low + high) / 2  # Середина интервала
-        if f_norm(mid) < p:  # Сравнение с вероятностью
-            low = mid  # Сдвиг левой границы
-        else:
-            high = mid  # Сдвиг правой границы
-    return low * sigma + mu  # Возврат результата
+def two_sided_p_value(x: float, mean: float, std: float) -> float:
+    """Двустороннее p-значение для нормального распределения"""
+    return 2 * (1 - normal_cdf(x, mean, std)) if x >= mean else 2 * normal_cdf(x, mean, std)  # Вычисление p-значения
 
-# Исходные данные
-data = [1.7, -5.4, -4.0, -5.9, -1.6, 0.0, 0.6, 2.1, 0.1, -4.9, -3.5, 
-        5.9, 8.5, 9.9, 13.3, 11.1, 14.4, 16.2]
-t = list(range(len(data)))  # Временные точки
+def compute_normal_params(residuals: List[float]) -> Tuple[float, float]:
+    """Вычисление среднего и стандартного отклонения"""
+    n = len(residuals)  # Количество элементов в списке остатков
+    mu = sum(residuals) / n  # Вычисление среднего значения остатков
+    variance = sum((r - mu) ** 2 for r in residuals) / n  # Вычисление дисперсии остатков
+    return mu, math.sqrt(variance)  # Возврат среднего и стандартного отклонения
 
-# Подготовка данных для экспоненциальной аппроксимации
-positive_data = [x + 10 for x in data]  # Сдвиг в положительную область
-y = [math.log(x) for x in positive_data]  # Логарифмирование данных
+def exponential_fit(y: List[float], t: List[int]) -> Tuple[float, float, float]:
+    """Аппроксимация экспонентой y = A * exp(b * t)"""
+    min_y = min(y)  # Нахождение минимального значения в данных
+    shift = abs(min_y) + 0.01 if min_y <= 0 else 0  # Вычисление сдвига для положительных значений
+    y_shifted = [yi + shift for yi in y]  # Создание сдвинутого массива данных
+    log_y = [math.log(yi) for yi in y_shifted]  # Вычисление натуральных логарифмов
 
-# Вычисление сумм для МНК
-sum_t = sum(t)  # Сумма временных точек
-sum_y = sum(y)  # Сумма логарифмов
-sum_t2 = sum(ti*ti for ti in t)  # Сумма квадратов времени
-sum_yt = sum(ti*yi for ti, yi in zip(t, y))  # Сумма произведений
-n = len(t)  # Количество точек
+    n = len(y)  # Количество точек данных
+    sum_t = sum(t)  # Сумма всех временных точек
+    sum_logy = sum(log_y)  # Сумма логарифмов данных
+    sum_t2 = sum(ti ** 2 for ti in t)  # Сумма квадратов временных точек
+    sum_t_logy = sum(ti * yi for ti, yi in zip(t, log_y))  # Сумма произведений времени на логарифмы
 
-# Вычисление параметров экспоненты
-b = (sum_yt*n - sum_t*sum_y) / (sum_t2*n - sum_t*sum_t)  # Коэффициент b
-a = (sum_y - b*sum_t) / n  # Коэффициент a
-A = math.exp(a)  # Преобразование коэффициента A
+    denom = n * sum_t2 - sum_t ** 2  # Вычисление знаменателя для формул МНК
+    b = (n * sum_t_logy - sum_t * sum_logy) / denom  # Вычисление коэффициента b
+    a = (sum_logy - b * sum_t) / n  # Вычисление коэффициента a
+    A = math.exp(a)  # Вычисление коэффициента A через экспоненту
 
-# Расчет предсказанных значений
-predicted = [A * math.exp(b*ti) - 10 for ti in t]  # Обратное преобразование
+    return A, b, shift  # Возврат параметров модели
 
-# Анализ остатков (разница между реальными и предсказанными значениями)
-residuals = [data[i] - predicted[i] for i in range(n)]  # Вычисление остатков
-mu_res = sum(residuals) / n  # Среднее остатков
-sigma_res = math.sqrt(sum((r - mu_res)**2 for r in residuals) / (n-1))  # Стандартное отклонение
+# --- Основной блок ---
+data_values = [1.7, -5.4, -4.0, -5.9, -1.6, 0.0, 0.6, 2.1, 0.1, -4.9, -3.5, 5.9, 8.5, 9.9, 13.3, 11.1, 14.4, 16.2]  # Исходные данные
+time_points = list(range(len(data_values)))  # Создание списка временных точек [0, 1, 2, ..., 17]
 
-# Проверка нормальности распределения остатков
-max_dev = max(abs(r - mu_res) for r in residuals)  # Максимальное отклонение
-p_value = 2 * (1 - f_norm(max_dev/sigma_res))  # p-значение
+# Аппроксимация экспонентой
+A_val, b_val, shift_val = exponential_fit(data_values, time_points)  # Получение параметров экспоненциальной модели
+predicted = [A_val * math.exp(b_val * ti) - shift_val for ti in time_points]  # Вычисление предсказанных значений
 
-print("Параметры модели: A =", round(A, 2), "b =", round(b, 2))
-print("Среднее остатков:", round(mu_res, 2))
-print("Стд. отклонение остатков:", round(sigma_res, 2))
-print("Наибольшее отклонение:", round(max_dev, 2))
-print("p-значение:", round(p_value, 3))
+# Остатки и проверка нормальности
+residuals = [data_values[i] - predicted[i] for i in range(len(data_values))]  # Вычисление разностей между данными и моделью
+mu_res, sigma_res = compute_normal_params(residuals)  # Вычисление параметров распределения остатков
+D_max = max(abs(r - mu_res) for r in residuals)  # Нахождение максимального отклонения от среднего
+p_val = two_sided_p_value(mu_res + D_max, mu_res, sigma_res)  # Вычисление p-значения
 
-# Проверка статистической гипотезы
-if p_value > 0.05:  # Сравнение с уровнем значимости 5%
-    print("Гипотеза принимается: последовательность аппроксимируется экспоненциальной функцией")
-else:
-    print("Гипотеза отвергается: последовательность НЕ аппроксимируется экспоненциальной функцией")
+print(f"  A = {A_val:.4f}, b = {b_val:.4f}, shift = {shift_val:.2f}")  # Вывод параметров модели
+print(f"  p-значение = {p_val:.4f}")  # Вывод p-значения
+print(f"  Гипотеза принята (p ≥ 0.05): {p_val >= 0.05}")  # Вывод результата проверки гипотезы
+
+# --- График ---
+plt.figure(figsize=(6, 4))  # Создание фигуры размером 6x4 дюйма
+plt.plot(time_points, data_values, 'ro', label='Исходные данные')  # Построение графика исходных данных красными точками
+plt.plot(time_points, predicted, 'b-', label='Аппроксимация экспонентой')  # Построение графика модели синей линией
+plt.title('Экспоненциальная аппроксимация последовательности')  # Заголовок графика
+plt.xlabel('Индекс')  # Подпись оси X
+plt.ylabel('Значение')  # Подпись оси Y
+plt.legend()  # Добавление легенды
+plt.grid(True)  # Включение сетки
+plt.show()  # Отображение графика

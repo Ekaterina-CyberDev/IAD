@@ -1,40 +1,47 @@
-import math
+import scipy.stats as stats  # Импорт библиотеки для статистических вычислений
+import numpy as np  # Импорт библиотеки для математических операций
 
-def normal_cdf(x, mu, sigma):
-    return 0.5 * (1 + math.erf((x - mu) / (sigma * math.sqrt(2)))) # Формула с использованием функции ошибок (error function)
+def calculate_critical_values(sample_size, probability, significance_level):
+    """
+    Вычисляет критические границы для биномиального распределения
+    """
+    # Основные параметры распределения
+    expected_value = sample_size * probability  # Расчет математического ожидания (среднего значения)
+    std_deviation = np.sqrt(sample_size * probability * (1 - probability))  # Расчет стандартного отклонения
+    
+    # Находим критическое значение Z для двустороннего теста
+    z_critical = stats.norm.ppf(1 - significance_level / 2)  # Вычисление Z-критического по квантилю нормального распределения
+    
+    # Вычисляем границы принятия гипотезы
+    lower_bound = expected_value - z_critical * std_deviation  # Расчет нижней границы доверительного интервала
+    upper_bound = expected_value + z_critical * std_deviation  # Расчет верхней границы доверительного интервала
+    
+    return round(lower_bound), round(upper_bound), z_critical  # Возврат округленных значений границ и Z-статистики
 
-def calculate_power(n, p0, p_alt, alpha=0.05):
-    """Расчет статистической мощности проверки гипотезы"""
-    
-    # Вычисление параметров при нулевой гипотезе (H0: p = p0)
-    mu0 = n * p0  # Математическое ожидание числа успехов при H0
-    sigma0 = math.sqrt(n * p0 * (1 - p0))  # Стандартное отклонение при H0
-    
-    # Определение критических значений для двустороннего теста
-    z_critical = 1.96  # Z-значение для уровня значимости 5% (alpha = 0.05)
-    lower_bound = mu0 - z_critical * sigma0  # Нижняя граница области принятия H0
-    upper_bound = mu0 + z_critical * sigma0  # Верхняя граница области принятия H0
-    
-    # Вычисление параметров при альтернативной гипотезе (H1: p = p_alt)
-    mu_alt = n * p_alt  # Математическое ожидание при H1
-    sigma_alt = math.sqrt(n * p_alt * (1 - p_alt))  # Стандартное отклонение при H1
-    
-    # Вероятность совершить ошибку 2-го рода (beta) = вероятность попасть в область принятия H0, когда верна H1
-    beta = (normal_cdf(upper_bound, mu_alt, sigma_alt) - 
-            normal_cdf(lower_bound, mu_alt, sigma_alt))
-    
-    # Мощность теста = 1 - beta (вероятность правильно отклонить H0)
-    power = 1 - beta
-    
-    return power, lower_bound, upper_bound
+# Основные параметры исследования
+total_shots = 1000  # Общее количество выстрелов в эксперименте
+hypothesized_miss_rate = 0.1  # Предполагаемая вероятность промаха (10%)
+significance_level = 0.05  # Уровень значимости (5%)
 
-# Параметры из примера с биатлонистом Сидоровым
-n = 1000 # количество выстрелов (объем выборки)
-p0 = 0.1 # нулевая гипотеза: вероятность промаха = 10%
-p_alt = 0.13 # альтернативная гипотеза: вероятность промаха = 13%
+# Вычисляем критические значения
+lower_limit, upper_limit, critical_z = calculate_critical_values(
+    total_shots, hypothesized_miss_rate, significance_level
+)  # Вызов функции для расчета критических границ
 
-# Вычисление мощности проверки и границ принятия гипотезы
-power, lower, upper = calculate_power(n, p0, p_alt)
+print("АНАЛИЗ КРИТИЧЕСКИХ ГРАНИЦ")  # Заголовок раздела результатов
+print("=" * 40)
+print(f"Общее количество выстрелов: {total_shots}")  # Вывод количества выстрелов
+print(f"Предполагаемая вероятность промаха: {hypothesized_miss_rate}")  # Вывод гипотетической вероятности
+print(f"Уровень значимости: {significance_level}")  # Вывод уровня значимости
+print(f"Критическое значение Z: {critical_z:.3f}")  # Вывод Z-критического значения
+print(f"Допустимый диапазон промахов: [{lower_limit}, {upper_limit}]")  # Вывод рассчитанных границ
 
-print(f"Мощность проверки: {power:.3f} ({power*100:.1f}%)")
-print(f"Область принятия H0: [{lower:.1f}, {upper:.1f}] промахов")
+print("\nВЛИЯНИЕ УРОВНЯ ЗНАЧИМОСТИ НА ГРАНИЦЫ")  # Заголовок раздела анализа зависимости
+print("=" * 50)
+significance_levels = [0.01, 0.05, 0.1]  # Список уровней значимости для анализа
+
+for level in significance_levels:  # Цикл по всем уровням значимости
+    low_bound, up_bound, z_value = calculate_critical_values(
+        total_shots, hypothesized_miss_rate, level
+    )  # Расчет границ для каждого уровня значимости
+    print(f"α = {level:5.2f} | Z = {z_value:5.2f} | Границы: [{low_bound:3d}, {up_bound:3d}]")
